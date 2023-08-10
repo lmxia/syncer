@@ -49,6 +49,7 @@ const (
 	serviceUnavailable = "ServiceUnavailable"
 	invalidServiceType = "UnsupportedServiceType"
 	clusterIP          = "cluster-ip"
+	nothingwrong       = "Nothingwrong"
 )
 
 type AgentConfig struct {
@@ -68,6 +69,7 @@ func New(spec *AgentSpecification, syncerConf broker.SyncerConfig, kubeClientSet
 		clusterID:     spec.ClusterID,
 		namespace:     spec.Namespace,
 		kubeClientSet: kubeClientSet,
+		scheme:        syncerConf.Scheme,
 	}
 
 	_, gvr, err := util.ToUnstructuredResource(&mcsv1a1.ServiceExport{}, syncerConf.RestMapper)
@@ -161,12 +163,12 @@ func (a *Controller) Start(stopCh <-chan struct{}) error {
 	// Start the informer factories to begin populating the informer caches
 	klog.Info("Starting Agent controller")
 
-	if err := a.serviceExportSyncer.Start(stopCh); err != nil {
-		return errors.Wrap(err, "error starting ServiceExport syncer")
-	}
-
 	if err := a.serviceSyncer.Start(stopCh); err != nil {
 		return errors.Wrap(err, "error starting Service syncer")
+	}
+
+	if err := a.serviceExportSyncer.Start(stopCh); err != nil {
+		return errors.Wrap(err, "error starting ServiceExport syncer")
 	}
 
 	if err := a.endpointSliceSyncer.Start(stopCh); err != nil {
@@ -327,7 +329,7 @@ func (a *Controller) onSuccessfulServiceImportSync(synced runtime.Object, op syn
 	serviceImport := synced.(*mcsv1a1.ServiceImport)
 
 	a.updateExportedServiceStatus(serviceImport.GetAnnotations()[constants.OriginName],
-		serviceImport.GetAnnotations()[constants.OriginNamespace], corev1.ConditionTrue, "",
+		serviceImport.GetAnnotations()[constants.OriginNamespace], corev1.ConditionTrue, nothingwrong,
 		"Service was successfully synced to the broker")
 	return false
 }
@@ -410,12 +412,16 @@ func (a *Controller) updateExportedServiceStatus(name, namespace string, status 
 }
 
 func (a *Controller) getServiceExport(name, namespace string) (*mcsv1a1.ServiceExport, error) {
-	_, err := a.serviceExportClient.Namespace(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	obj, err := a.serviceExportClient.Namespace(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving ServiceExport")
 	}
 
 	se := &mcsv1a1.ServiceExport{}
+	err = a.scheme.Convert(obj, se, nil)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "Error converting %#v to ServiceExport", obj)
+	}
 
 	return se, nil
 }

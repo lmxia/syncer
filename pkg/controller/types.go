@@ -40,6 +40,7 @@ type Controller struct {
 	serviceImportSyncer *broker.Syncer
 	endpointSliceSyncer *broker.Syncer
 	serviceSyncer       syncer.Interface
+	scheme              *runtime.Scheme
 }
 
 type AgentSpecification struct {
