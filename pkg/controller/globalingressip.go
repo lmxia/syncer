@@ -18,61 +18,56 @@ limitations under the License.
 
 package controller
 
-import (
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/klog/v2"
-)
+//const (
+//	ClusterIPService           = "ClusterIPService"
+//	HeadlessServicePod         = "HeadlessServicePod"
+//	defaultReasonIPUnavailable = "ServiceGlobalIPUnavailable"
+//	defaultMsgIPUnavailable    = "Service doesn't have a global IP yet"
+//)
 
-const (
-	ClusterIPService           = "ClusterIPService"
-	HeadlessServicePod         = "HeadlessServicePod"
-	defaultReasonIPUnavailable = "ServiceGlobalIPUnavailable"
-	defaultMsgIPUnavailable    = "Service doesn't have a global IP yet"
-)
-
-type IngressIP struct {
-	namespace         string
-	target            string
-	allocatedIP       string
-	unallocatedReason string
-	unallocatedMsg    string
-}
-
-func parseIngressIP(obj *unstructured.Unstructured) *IngressIP {
-	var (
-		found bool
-		err   error
-	)
-
-	gip := &IngressIP{}
-	gip.namespace = obj.GetNamespace()
-
-	gip.target, found, err = unstructured.NestedString(obj.Object, "spec", "target")
-	if !found || err != nil {
-		klog.Errorf("target field not found in spec %#v", obj.Object)
-		return nil
-	}
-
-	gip.allocatedIP, _, _ = unstructured.NestedString(obj.Object, "status", "allocatedIP")
-	if gip.allocatedIP == "" {
-		conditions, _, _ := unstructured.NestedSlice(obj.Object, "status", "conditions")
-		if len(conditions) > 0 {
-			latestCondition := conditions[len(conditions)-1].(map[string]interface{})
-			gip.unallocatedMsg = latestCondition["message"].(string)
-			gip.unallocatedReason = latestCondition["reason"].(string)
-		} else {
-			gip.unallocatedMsg = defaultMsgIPUnavailable
-			gip.unallocatedReason = defaultReasonIPUnavailable
-		}
-	}
-
-	return gip
-}
-
-func GetGlobalIngressIPObj() *unstructured.Unstructured {
-	gip := &unstructured.Unstructured{}
-	gip.SetKind("GlobalIngressIP")
-	gip.SetAPIVersion("submariner.io/v1")
-
-	return gip
-}
+//type IngressIP struct {
+//	namespace         string
+//	target            string
+//	allocatedIP       string
+//	unallocatedReason string
+//	unallocatedMsg    string
+//}
+//
+//func parseIngressIP(obj *unstructured.Unstructured) *IngressIP {
+//	var (
+//		found bool
+//		err   error
+//	)
+//
+//	gip := &IngressIP{}
+//	gip.namespace = obj.GetNamespace()
+//
+//	gip.target, found, err = unstructured.NestedString(obj.Object, "spec", "target")
+//	if !found || err != nil {
+//		klog.Errorf("target field not found in spec %#v", obj.Object)
+//		return nil
+//	}
+//
+//	gip.allocatedIP, _, _ = unstructured.NestedString(obj.Object, "status", "allocatedIP")
+//	if gip.allocatedIP == "" {
+//		conditions, _, _ := unstructured.NestedSlice(obj.Object, "status", "conditions")
+//		if len(conditions) > 0 {
+//			latestCondition := conditions[len(conditions)-1].(map[string]interface{})
+//			gip.unallocatedMsg = latestCondition["message"].(string)
+//			gip.unallocatedReason = latestCondition["reason"].(string)
+//		} else {
+//			gip.unallocatedMsg = defaultMsgIPUnavailable
+//			gip.unallocatedReason = defaultReasonIPUnavailable
+//		}
+//	}
+//
+//	return gip
+//}
+//
+//func GetGlobalIngressIPObj() *unstructured.Unstructured {
+//	gip := &unstructured.Unstructured{}
+//	gip.SetKind("GlobalIngressIP")
+//	gip.SetAPIVersion("submariner.io/v1")
+//
+//	return gip
+//}

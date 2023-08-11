@@ -443,6 +443,7 @@ func (a *Controller) newServiceImport(name, namespace string) *mcsv1a1.ServiceIm
 				constants.LabelSourceName:      name,
 				constants.LabelSourceNamespace: namespace,
 				constants.LabelSourceCluster:   a.clusterID,
+				constants.LabelOriginNameSpace: namespace,
 			},
 		},
 	}
