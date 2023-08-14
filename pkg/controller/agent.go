@@ -488,12 +488,13 @@ func generateSliceName(clusterName, namespace, name string) string {
 }
 
 func (a *Controller) getObjectNameWithClusterID(name, namespace string) string {
-	return name + "-" + namespace + "-" + a.clusterID
+	return generateSliceName(a.clusterID, namespace, name)
 }
 
 func (a *Controller) remoteEndpointSliceToLocal(obj runtime.Object, numRequeues int, op syncer.Operation) (runtime.Object, bool) {
 	endpointSlice := obj.(*discovery.EndpointSlice)
-	endpointSlice.Namespace = endpointSlice.GetObjectMeta().GetLabels()[constants.LabelSourceNamespace]
+	endpointSlice.Name = generateSliceName(endpointSlice.GetObjectMeta().GetLabels()[constants.LabelSourceCluster],
+		endpointSlice.GetObjectMeta().GetLabels()[constants.LabelSourceNamespace], endpointSlice.Name)
 
 	return endpointSlice, false
 }
