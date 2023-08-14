@@ -12,3 +12,9 @@ const (
 	MCSLabelSourceCluster = "multicluster.kubernetes.io/source-cluster"
 	KubernetesServiceName = "kubernetes.io/service-name"
 )
+
+const (
+	MaxNamespaceLength = 10
+	MaxNameLength      = 10
+	MaxClusternName    = 10
+)

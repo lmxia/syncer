@@ -20,6 +20,8 @@ package controller
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"reflect"
 
@@ -99,7 +101,7 @@ func New(spec *AgentSpecification, syncerConf broker.SyncerConfig, kubeClientSet
 		return nil, errors.Wrap(err, "error creating ServiceImport syncer")
 	}
 
-	syncerConf.LocalNamespace = metav1.NamespaceAll
+	//syncerConf.LocalNamespace = metav1.NamespaceAll
 	syncerConf.ResourceConfigs = []broker.ResourceConfig{
 		{
 			LocalSourceNamespace: metav1.NamespaceAll,
@@ -461,6 +463,28 @@ func (a *Controller) getPortsForService(service *corev1.Service) []mcsv1a1.Servi
 	}
 
 	return mcsPorts
+}
+
+func generateSliceName(clusterName, namespace, name string) string {
+	clusterName = fmt.Sprintf("%s%s%s", clusterName, namespace, name)
+	hasher := md5.New()
+	hasher.Write([]byte(clusterName))
+	var namespacePart, namePart string
+	if len(namespace) > constants.MaxNamespaceLength {
+		namespacePart = namespace[0:constants.MaxNamespaceLength]
+	} else {
+		namespacePart = namespace
+	}
+
+	if len(name) > constants.MaxNameLength {
+		namePart = name[0:constants.MaxNameLength]
+	} else {
+		namePart = name
+	}
+
+	hashPart := hex.EncodeToString(hasher.Sum(nil))
+
+	return fmt.Sprintf("%s-%s-%s", namespacePart, namePart, hashPart[8:24])
 }
 
 func (a *Controller) getObjectNameWithClusterID(name, namespace string) string {
