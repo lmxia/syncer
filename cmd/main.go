@@ -26,11 +26,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/kelseyhightower/envconfig"
-	"github.com/lmxia/syncer/pkg/controller"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/submariner-io/admiral/pkg/syncer/broker"
-	"github.com/submariner-io/admiral/pkg/util"
+	"github.com/lmxia/syncer/pkg/known"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -38,6 +34,11 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 	mcsv1a1 "sigs.k8s.io/mcs-api/pkg/apis/v1alpha1"
+	mcsclientset "sigs.k8s.io/mcs-api/pkg/client/clientset/versioned"
+
+	"github.com/kelseyhightower/envconfig"
+	"github.com/lmxia/syncer/pkg/controller"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -46,7 +47,7 @@ var (
 )
 
 func main() {
-	agentSpec := controller.AgentSpecification{}
+	agentSpec := known.AgentSpecification{}
 	klog.InitFlags(nil)
 
 	flag.Parse()
@@ -74,12 +75,12 @@ func main() {
 		klog.Fatalf("Error building clientset: %s", err.Error())
 	}
 
-	restMapper, err := util.BuildRestMapper(cfg)
 	if err != nil {
 		klog.Fatal(err.Error())
 	}
 
 	localClient, err := dynamic.NewForConfig(cfg)
+	mcsClientSet := mcsclientset.NewForConfigOrDie(cfg)
 	if err != nil {
 		klog.Fatalf("error creating dynamic client: %v", err)
 	}
@@ -89,21 +90,17 @@ func main() {
 	// set up signals so we handle the first shutdown signal gracefully
 	ctx := signals.SetupSignalHandler()
 
-	agent, err := controller.New(&agentSpec, broker.SyncerConfig{
+	agent, err := controller.New(&agentSpec, known.SyncerConfig{
 		LocalRestConfig: cfg,
 		LocalClient:     localClient,
-		RestMapper:      restMapper,
-		Scheme:          scheme.Scheme,
-	}, kubeClientSet,
-		controller.AgentConfig{
-			ServiceImportCounterName: "syncer_service_import",
-			ServiceExportCounterName: "syncer_service_export",
-		})
+		LocalNamespace:  agentSpec.LocalNamespace,
+		LocalClusterID:  agentSpec.ClusterID,
+	}, kubeClientSet, mcsClientSet)
 	if err != nil {
 		klog.Fatalf("Failed to create syncer agent: %v", err)
 	}
 
-	if err := agent.Start(ctx.Done()); err != nil {
+	if err := agent.Start(ctx); err != nil {
 		klog.Fatalf("Failed to start syncer agent: %v", err)
 	}
 

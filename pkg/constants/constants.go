@@ -1,7 +1,7 @@
 package constants
 
 const (
-	LabelValueManagedBy   = "syncer.nri.io"
+	LabelValueManagedBy   = "clusternet.clusternet.io"
 	OriginName            = "origin-name"
 	OriginNamespace       = "origin-namespace"
 	LabelSourceNamespace  = "submariner-io/originatingNamespace"
