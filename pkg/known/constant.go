@@ -35,6 +35,6 @@ const (
 )
 
 const (
-	HubSecretName          = "syncer-operator"
+	HubSecretName          = "hub-syncer"
 	ClusterAPIServerURLKey = "apiserver-advertise-url"
 )

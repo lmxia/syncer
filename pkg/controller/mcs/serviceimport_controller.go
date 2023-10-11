@@ -156,8 +156,8 @@ func (c *ServiceImportController) Handle(obj interface{}) (requeueAfter *time.Du
 		known.LabelServiceNameSpace: rawServiceNamespace,
 	}
 
-	endpointSliceList, err := utils.RemoveNonexistentEndpointslice(c.endpointSlicesLister, corev1.NamespaceAll,
-		srcLabelMap, c.localk8sClient, namespace, dstLabelMap)
+	endpointSliceList, err := utils.RemoveNonexistentEndpointslice(c.endpointSlicesLister, "",
+		corev1.NamespaceAll, srcLabelMap, c.localk8sClient, namespace, dstLabelMap)
 	if err != nil {
 		d := time.Second
 		return &d, err
@@ -203,7 +203,7 @@ func (c *ServiceImportController) applyServiceFromServiceImport(svcImport *v1alp
 	newService := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: svcImport.Namespace,
-			Name:      utils.clusterID("", rawServiceNamespace, rawServiceName, ""),
+			Name:      utils.DerivedName("", rawServiceNamespace, rawServiceName),
 		},
 		Spec: corev1.ServiceSpec{
 			Type:  corev1.ServiceTypeClusterIP,
@@ -294,7 +294,7 @@ func (c *ServiceImportController) recycleServiceImport(ctx context.Context, si *
 		return err
 	}
 	// 2. recycle derived service.
-	svcName := utils.clusterID("", rawServiceNamespace, rawServiceName, "")
+	svcName := utils.DerivedName("", rawServiceNamespace, rawServiceName)
 	err := c.localk8sClient.CoreV1().Services(si.Namespace).Delete(ctx, svcName, metav1.DeleteOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		klog.Errorf("Delete derived service(%s) failed, Error: %v", svcName, err)

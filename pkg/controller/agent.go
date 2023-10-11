@@ -27,13 +27,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	serviceUnavailable = "ServiceUnavailable"
-	invalidServiceType = "UnsupportedServiceType"
-	clusterIP          = "cluster-ip"
-	nothingwrong       = "Nothingwrong"
-)
-
 type AgentConfig struct {
 	ServiceImportCounterName string
 	ServiceExportCounterName string
@@ -47,6 +40,7 @@ type Syncer struct {
 	ServiceExportController *mcs.ServiceExportController
 	HubKubeConfig           *rest.Config
 	SyncerConf              known.SyncerConfig
+	EpsController           *mcs.EpsController
 }
 
 func New(spec *known.AgentSpecification, syncerConf known.SyncerConfig, kubeClientSet kubernetes.Interface, mcsClientSet *mcsclientset.Clientset) (*Syncer, error) {
@@ -63,6 +57,9 @@ func New(spec *known.AgentSpecification, syncerConf known.SyncerConfig, kubeClie
 	}
 
 	hubKubeConfig, err := config.GetHubConfig(kubeClientSet, spec.HubURL, spec.LocalNamespace)
+	hubK8sClient := kubernetes.NewForConfigOrDie(hubKubeConfig)
+	hubInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(hubK8sClient, known.DefaultResync, kubeinformers.WithNamespace(spec.ShareNamespace))
+	epsController, err := mcs.NewEpsController(spec.ClusterID, syncerConf.LocalNamespace, hubInformerFactory.Discovery().V1().EndpointSlices(), kubeClientSet, hubInformerFactory)
 
 	syncerConf.LocalNamespace = spec.LocalNamespace
 	syncerConf.LocalClusterID = spec.ClusterID
@@ -74,6 +71,7 @@ func New(spec *known.AgentSpecification, syncerConf known.SyncerConfig, kubeClie
 		KubeInformerFactory:     kubeInformerFactory,
 		ServiceExportController: serviceExportController,
 		HubKubeConfig:           hubKubeConfig,
+		EpsController:           epsController,
 	}
 
 	return syncer, nil
@@ -86,6 +84,12 @@ func (a *Syncer) Start(ctx context.Context) error {
 	klog.Info("Starting Syncer")
 	go wait.UntilWithContext(ctx, func(ctx context.Context) {
 		if err := a.ServiceExportController.Run(ctx, a.HubKubeConfig, a.SyncerConf.RemoteNamespace); err != nil {
+			klog.Error(err)
+		}
+	}, time.Duration(0))
+
+	go wait.UntilWithContext(ctx, func(ctx context.Context) {
+		if err := a.EpsController.Run(ctx); err != nil {
 			klog.Error(err)
 		}
 	}, time.Duration(0))

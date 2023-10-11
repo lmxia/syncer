@@ -19,13 +19,6 @@ limitations under the License.
 package known
 
 import (
-	"sync"
-
-	"github.com/submariner-io/admiral/pkg/syncer"
-	"github.com/submariner-io/admiral/pkg/watcher"
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 )
@@ -47,50 +40,4 @@ type AgentSpecification struct {
 	LocalNamespace string
 	ShareNamespace string
 	HubURL         string
-}
-
-// The ServiceImportController listens for ServiceImport resources created in the target LocalNamespace
-// and creates an EndpointController in response. The EndpointController will use the app label as filter
-// to listen only for the endpoints event related to ServiceImport created.
-type ServiceImportController struct {
-	serviceSyncer        syncer.Interface
-	localClient          dynamic.Interface
-	restMapper           meta.RESTMapper
-	serviceImportSyncer  syncer.Interface
-	endpointControllers  sync.Map
-	clusterID            string
-	scheme               *runtime.Scheme
-	globalIngressIPCache *globalIngressIPCache
-}
-
-// Each EndpointController listens for the endpoints that backs a service and have a ServiceImport
-// It will create an endpoint slice corresponding to an endpoint object and set the owner references
-// to ServiceImport. The app label from the endpoint will be added to endpoint slice as well.
-type EndpointController struct {
-	serviceImportUID             types.UID
-	clusterID                    string
-	serviceImportName            string
-	serviceName                  string
-	serviceImportSourceNameSpace string
-	stopCh                       chan struct{}
-	stopOnce                     sync.Once
-	isHeadless                   bool
-	localClient                  dynamic.Interface
-	ingressIPClient              dynamic.NamespaceableResourceInterface
-	globalIngressIPCache         *globalIngressIPCache
-}
-
-type globalIngressIPCache struct {
-	sync.Mutex
-	byService sync.Map
-	byPod     sync.Map
-	watcher   watcher.Interface
-}
-
-type HubSpecification struct {
-	APIServer       string
-	APIServerToken  string
-	RemoteNamespace string
-	Insecure        bool `default:"false"`
-	Ca              string
 }
