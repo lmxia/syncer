@@ -51,7 +51,7 @@ func init() {
 }
 
 type ServiceExportController struct {
-	yachtController *yacht.Controller
+	YachtController *yacht.Controller
 
 	//local msc client
 	localClusterID     string
@@ -114,7 +114,7 @@ func NewServiceExportController(clusteID string, epsInformer discoveryinformerv1
 	if err != nil {
 		return nil, err
 	}
-	sec.yachtController = yachtcontroller
+	sec.YachtController = yachtcontroller
 	return sec, nil
 }
 
@@ -223,7 +223,7 @@ func (c *ServiceExportController) Run(ctx context.Context, parentDedicatedKubeCo
 	parentClient := kubernetes.NewForConfigOrDie(parentDedicatedKubeConfig)
 	c.parentk8sClient = parentClient
 
-	c.yachtController.Run(ctx)
+	c.YachtController.Run(ctx)
 	return nil
 }
 
@@ -249,7 +249,6 @@ func constructEndpointSlice(slice *discoveryv1.EndpointSlice, se *v1alpha1.Servi
 	newSlice.Labels[known.LabelServiceName] = se.Name
 	newSlice.Labels[known.LabelClusterID] = clusterID
 	newSlice.Labels[known.LabelServiceNameSpace] = se.Namespace
-	newSlice.Labels[known.ObjectCreatedByLabel] = "clusternet"
 	newSlice.Labels[discoveryv1.LabelServiceName] = utils.DerivedName(clusterID, se.Namespace, se.Name)
 
 	newSlice.Namespace = namespace

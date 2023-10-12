@@ -17,6 +17,7 @@ import (
 	discoverylisterv1 "k8s.io/client-go/listers/discovery/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
+	mcsclientset "sigs.k8s.io/mcs-api/pkg/client/clientset/versioned"
 
 	"github.com/dixudx/yacht"
 )
@@ -34,7 +35,8 @@ type EpsController struct {
 	k8sInformerFactory kubeinformers.SharedInformerFactory
 }
 
-func NewEpsController(clusteID, targetNamespace string, epsInformer discoveryinformerv1.EndpointSliceInformer, kubeClientSet kubernetes.Interface, k8sInformerFactory kubeinformers.SharedInformerFactory) (*EpsController, error) {
+func NewEpsController(clusteID, targetNamespace string, epsInformer discoveryinformerv1.EndpointSliceInformer, kubeClientSet kubernetes.Interface,
+	k8sInformerFactory kubeinformers.SharedInformerFactory, seController *ServiceExportController, mcsSet *mcsclientset.Clientset) (*EpsController, error) {
 	epsController := &EpsController{
 		srcEndpointSlicesLister: epsInformer.Lister(),
 		targetK8sClient:         kubeClientSet,
@@ -45,10 +47,24 @@ func NewEpsController(clusteID, targetNamespace string, epsInformer discoveryinf
 	yachtcontroller := yacht.NewController("eps").
 		WithCacheSynced(epsInformer.Informer().HasSynced).
 		WithHandlerFunc(epsController.Handle).WithEnqueueFilterFunc(func(oldObj, newObj interface{}) (bool, error) {
+		var tempObj interface{}
 		if newObj != nil {
-			newEps := newObj.(*discoveryv1.EndpointSlice)
+			tempObj = newObj
+		} else {
+			tempObj = oldObj
+		}
+
+		if tempObj != nil {
+			newEps := tempObj.(*discoveryv1.EndpointSlice)
 			// ignore the eps sourced from it-self
 			if newEps.GetLabels()[known.LabelClusterID] == clusteID {
+				slice := tempObj.(*discoveryv1.EndpointSlice)
+				seNamespace := slice.Labels[known.LabelServiceNameSpace]
+				if serviceName, ok := slice.Labels[known.LabelServiceName]; ok {
+					if se, err := mcsSet.MulticlusterV1alpha1().ServiceExports(seNamespace).Get(context.TODO(), serviceName, metav1.GetOptions{}); err == nil {
+						seController.YachtController.Enqueue(se)
+					}
+				}
 				return false, nil
 			}
 		}
