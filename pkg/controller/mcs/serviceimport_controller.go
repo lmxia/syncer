@@ -23,8 +23,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/clusternet/clusternet/pkg/known"
 	"github.com/dixudx/yacht"
+	"github.com/lmxia/syncer/pkg/known"
 	"github.com/lmxia/syncer/utils"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
@@ -149,7 +149,6 @@ func (c *ServiceImportController) Handle(obj interface{}) (requeueAfter *time.Du
 	srcLabelMap := labels.Set{
 		known.LabelServiceName:      rawServiceName,
 		known.LabelServiceNameSpace: rawServiceNamespace,
-		known.ObjectCreatedByLabel:  known.ClusternetAgentName,
 	}
 	dstLabelMap := labels.Set{
 		known.LabelServiceName:      rawServiceName,
@@ -310,19 +309,17 @@ func (c *ServiceImportController) recycleServiceImport(ctx context.Context, si *
 // getServiceImportFromEndpointSlice get ServiceImport from endpointSlice labels, get the first if more than one.
 func (c *ServiceImportController) getServiceImportFromEndpointSlice(obj interface{}) (*v1alpha1.ServiceImport, error) {
 	slice := obj.(*discoveryv1.EndpointSlice)
-	rawServiceName, serviceExist := slice.Labels[known.LabelServiceName]
-	rawServiceNamespace, serviceNamespaceExsit := slice.Labels[known.LabelServiceNameSpace]
-	subNamespace, subNamespaceExsit := slice.Labels[known.ConfigSubscriptionNamespaceLabel]
-	if serviceExist && serviceNamespaceExsit && subNamespaceExsit {
-		if siList, err := c.serviceImportLister.ServiceImports(subNamespace).List(
-			labels.SelectorFromSet(labels.Set{
-				known.LabelServiceName:      rawServiceName,
-				known.LabelServiceNameSpace: rawServiceNamespace,
-			})); err == nil && len(siList) > 0 {
-			return siList[0], nil
-		}
-	}
-
+	//rawServiceName, serviceExist := slice.Labels[known.LabelServiceName]
+	//rawServiceNamespace, serviceNamespaceExsit := slice.Labels[known.LabelServiceNameSpace]
+	////if serviceExist && serviceNamespaceExsit {
+	////	if siList, err := c.serviceImportLister.ServiceImports(subNamespace).List(
+	////		labels.SelectorFromSet(labels.Set{
+	////			known.LabelServiceName:      rawServiceName,
+	////			known.LabelServiceNameSpace: rawServiceNamespace,
+	////		})); err == nil && len(siList) > 0 {
+	////		return siList[0], nil
+	////	}
+	////}
 	return nil, fmt.Errorf("can't resolve service import from this slice %s/%s", slice.Namespace, slice.Name)
 }
 
